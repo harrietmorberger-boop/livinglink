@@ -1,0 +1,47 @@
+// ============================================================
+// HANDS - talks to the webcam and ml5 handPose.
+// Everything about "where is my hand?" lives in this file.
+// ============================================================
+
+let video;            // the webcam feed
+let handPose;         // the ml5 hand tracking model
+let hands = [];       // latest hands found (ml5 updates this for us)
+let modelReady = false;
+
+// Called from sketch.js preload(). Loads the model and starts the camera.
+function startHandTracking() {
+  // ml5 v1: handPose model. flipped:false because we mirror the picture ourselves
+  // (that way we control exactly how mirroring works).
+  handPose = ml5.handPose({ flipped: false }, () => {
+    modelReady = true;
+    // Tell the model to keep looking at the video and call gotHands each time
+    handPose.detectStart(video, gotHands);
+  });
+
+  video = createCapture(VIDEO);
+  video.size(CONFIG.videoWidth, CONFIG.videoHeight);
+  video.hide(); // hide the default HTML video element, we draw it ourselves
+}
+
+// ml5 calls this every time it has a new result
+function gotHands(results) {
+  hands = results;
+}
+
+// Returns the index fingertip as a point on the CANVAS, mirrored so that
+// moving your hand right moves the dot right (like a mirror).
+// Returns null if no hand is visible.
+function getIndexTip() {
+  if (hands.length === 0) return null;
+  const tip = hands[0].keypoints.find(k => k.name === "index_finger_tip");
+  if (!tip) return null;
+  return videoToCanvas(tip);
+}
+
+// Convert a point in camera pixels into canvas pixels, and mirror it.
+function videoToCanvas(pt) {
+  return {
+    x: width - (pt.x / CONFIG.videoWidth) * width, // "width -" = the mirror flip
+    y: (pt.y / CONFIG.videoHeight) * height,
+  };
+}

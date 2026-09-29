@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Living Ink</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    /* Remove page margins so the canvas fills the whole window */
+    html, body { margin: 0; padding: 0; background: #06080f; overflow: hidden; }
+    canvas { display: block; }
+  </style>
+
+  <!-- Libraries. Versions are pinned so they can't change under us. -->
+  <script src="https://cdn.jsdelivr.net/npm/p5@1.11.3/lib/p5.min.js"></script>
+  <script src="https://unpkg.com/ml5@1/dist/ml5.min.js"></script>
+
+  <!-- Our own files. Order matters: config first, sketch last. -->
+  <script src="config.js"></script>
+  <script src="hands.js"></script>
+  <script src="sketch.js"></script>
+</head>
+<body></body>
+</html>
