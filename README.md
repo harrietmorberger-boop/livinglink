@@ -21,6 +21,7 @@ You need an internet connection the first time (the libraries and hand model loa
 ## Keys (testing only)
 
 - `M` = switch mouse mode on/off (mouse replaces the fingertip)
+- `D` = show / hide the testing text
 - In mouse mode: click = draw, hold `E` = erase, hold `F` = freeze
 
 ## Files
@@ -32,4 +33,6 @@ You need an internet connection the first time (the libraries and hand model loa
 - `particles.js` drifting ink particles
 - `branch.js` fractal branches that grow off strokes
 - `stroke.js` strokes: drawing, thickness, erasing, ageing and dissolving
+- `interaction.js` tangling between strokes, particles starting new growth
+- `ui.js` help text and error messages
 - `sketch.js` main loop and on-screen UI

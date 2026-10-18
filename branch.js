@@ -21,7 +21,7 @@ function speedAmount(speed) {
 class Branch {
   // anchor = the stroke point this branch grew from (so we know if it gets erased)
   // amount = 0..1 how fast the hand was moving when it was born
-  constructor(x, y, angle, len, width, depth, amount, anchor) {
+  constructor(x, y, angle, len, width, depth, amount, anchor, ownerId) {
     this.points = [{ x, y }, { x, y }];   // the last point is the growing tip
     this.heading = angle;                 // direction the tip is heading (radians)
     this.len = len;                       // how long it will grow in total
@@ -30,6 +30,11 @@ class Branch {
     this.depth = depth;                   // 0 = first branch off the stroke
     this.amount = amount;
     this.anchor = anchor;
+    this.ownerId = ownerId;               // which stroke this belongs to (branches only tangle with OTHER strokes)
+    this.canTangle = random() < CONFIG.tangleChance;
+    this.tangled = false;                 // has it already tied a knot?
+    this.curlLeft = 0;                    // pixels of curling still to do after touching
+    this.knot = null;                     // where it tied its knot
     // How much it curves as it grows (radians per pixel). Always at least a little curved.
     // A fast hand makes straighter, stick-like branches (see branchStraightFast).
     this.bend = random(CONFIG.branchCurveMin, CONFIG.branchCurveMax) * random([-1, 1]) *
@@ -45,6 +50,7 @@ class Branch {
   grow() {
     if (!this.done) {
       const tip = this.points[this.points.length - 1];
+      if (this.canTangle && !this.tangled) this.steerToNeighbours(tip);
       // Move the tip forward a little, turning slightly as it goes
       this.heading += this.bend * this.growSpeed;
       tip.x += cos(this.heading) * this.growSpeed;
@@ -55,12 +61,50 @@ class Branch {
       const prev = this.points[this.points.length - 2];
       if (dist(prev.x, prev.y, tip.x, tip.y) > 4) this.points.push({ x: tip.x, y: tip.y });
 
-      if (this.grown >= this.len) {
+      if (this.curlLeft > 0) {
+        // Curling around a knot. When the curl is finished the branch carries on
+        // as normal: it forks into smaller branches from where the curl ended.
+        this.curlLeft -= this.growSpeed;
+        if (this.curlLeft <= 0) {
+          this.done = true;
+          this.fork();
+        }
+      } else if (this.grown >= this.len) {
         this.done = true;
         this.fork();
       }
     }
     for (const c of this.children) c.grow();
+  }
+
+  // TANGLING: bend toward ink from another stroke that is close by.
+  // When it gets close enough it hooks around it in a small curl and ties a knot.
+  steerToNeighbours(tip) {
+    // Each stroke may only tie so many knots, or it would turn into a bead necklace
+    if ((tangleCounts.get(this.ownerId) || 0) >= CONFIG.maxTanglesPerStroke) return;
+    const target = findTangleTarget(tip.x, tip.y, this.ownerId);
+    if (!target) return;
+    const d = dist(tip.x, tip.y, target.x, target.y);
+
+    if (d < CONFIG.tangleTouch) {
+      // Touching! Start curling around it. The curl turns whichever way wraps round the target.
+      const cross = cos(this.heading) * (target.y - tip.y) - sin(this.heading) * (target.x - tip.x);
+      this.bend = (cross >= 0 ? 1 : -1) * CONFIG.tangleCurlBend;
+      this.curlLeft = CONFIG.tangleCurlLength;
+      this.knot = { x: target.x, y: target.y };
+      this.tangled = true;
+      stats.tangles++;
+      tangleCounts.set(this.ownerId, (tangleCounts.get(this.ownerId) || 0) + 1);
+      return;
+    }
+
+    // Not touching yet: turn a little toward it. Closer = stronger pull.
+    // (Ignore anything behind us, so branches don't do U-turns.)
+    const wanted = atan2(target.y - tip.y, target.x - tip.x);
+    const diff = atan2(sin(wanted - this.heading), cos(wanted - this.heading));   // -PI..PI
+    if (abs(diff) > 1.75) return;
+    const pull = CONFIG.tangleStrength * this.growSpeed * (1 - d / CONFIG.tangleRadius);
+    this.heading += constrain(diff, -pull, pull);
   }
 
   // Make the smaller branches at the tip (the "recursive" step)
@@ -82,7 +126,7 @@ class Branch {
       const side = count === 2 ? (i === 0 ? -1 : 1) : random([-1, 1]) * 0.5;
       const angle = this.heading + side * spread + random(-0.2, 0.2);
       this.children.push(new Branch(tip.x, tip.y, angle, childLen * random(0.85, 1.1),
-                                    childWidth, this.depth + 1, this.amount, this.anchor));
+                                    childWidth, this.depth + 1, this.amount, this.anchor, this.ownerId));
     }
   }
 
@@ -94,6 +138,14 @@ class Branch {
     beginShape();
     for (const p of this.points) vertex(p.x, p.y);
     endShape();
+    // The knot: a small dot where it tied itself to another stroke
+    if (this.knot) {
+      push();
+      noStroke();
+      fill(...CONFIG.inkColor, a);
+      circle(this.knot.x, this.knot.y, this.width * 2 + 2);
+      pop();
+    }
     for (const c of this.children) c.display(alphaScale);
   }
 
@@ -134,7 +186,7 @@ class Branch {
         const p0 = this.points[0], p1 = this.points[1];
         const seg = dist(p0.x, p0.y, p1.x, p1.y);
         if (random() < budget * CONFIG.branchDissolveParticles) {
-          spawnParticle(p0.x, p0.y, this.width * 0.6);
+          spawnParticle(p0.x, p0.y, this.width * 0.6, true);
         }
         if (seg <= budget) {                            // eat the whole piece up to the next point
           budget -= seg;

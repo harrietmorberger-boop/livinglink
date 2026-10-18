@@ -11,7 +11,9 @@
 const particles = [];
 
 // Make one particle at (x, y). Called whenever ink disappears.
-function spawnParticle(x, y, size) {
+// canSeed = true for particles from a DYING stroke: those can start new growth
+// if they land on a living stroke (see interaction.js).
+function spawnParticle(x, y, size, canSeed) {
   if (particles.length >= CONFIG.maxParticles) return;   // too many already: skip
   const angle = random(TWO_PI);
   const speed = random(0.2, 1.0);
@@ -23,6 +25,7 @@ function spawnParticle(x, y, size) {
     life: 0,                               // seconds alive so far
     maxLife: random(CONFIG.particleLifeMin, CONFIG.particleLifeMax),
     shade: random(0.75, 1.25),             // some flecks a little lighter or darker
+    seed: !!canSeed,
   });
 }
 

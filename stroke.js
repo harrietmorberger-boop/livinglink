@@ -10,11 +10,14 @@
 // nothing is left.
 // ============================================================
 
+let nextStrokeId = 1;        // every stroke gets a number, so branches know which stroke is theirs
+let strokesStarted = 0;      // how many strokes the user has begun (the help text uses this)
 const strokes = [];          // every stroke on screen
 let currentStroke = null;    // the stroke being drawn right now (or null)
 
 class Stroke {
   constructor() {
+    this.id = nextStrokeId++;
     this.points = [];        // each point: { x, y, w (thickness), amount (0..1 speed) }
     this.branches = [];      // the first branches growing off this stroke
     this.sinceSeed = 0;      // pixels drawn since the last branch started
@@ -78,7 +81,7 @@ class Stroke {
     // Fast hand = longer branches
     const len = lerp(CONFIG.branchLengthSlow, CONFIG.branchLengthFast, amount) * random(0.8, 1.2);
     const width = max(CONFIG.minBranchWidth, point.w * CONFIG.branchStartWidth);
-    this.branches.push(new Branch(point.x, point.y, angle, len, width, 0, amount, point));
+    this.branches.push(new Branch(point.x, point.y, angle, len, width, 0, amount, point, this.id));
   }
 
   // Called every frame: let the branches grow
@@ -122,7 +125,7 @@ class Stroke {
     if (run.length > 0) pieces.push(run);
 
     for (const p of removed) {
-      if (random() < particleChance) spawnParticle(p.x, p.y, p.w * 0.35);
+      if (random() < particleChance) spawnParticle(p.x, p.y, p.w * 0.35, branchesDissolve);
     }
 
     // Turn each run of points into its own stroke. Tiny leftovers become particles.
@@ -130,7 +133,7 @@ class Stroke {
     const owner = new Map();           // which new stroke owns each point
     for (const pts of pieces) {
       if (pts.length < 3) {
-        for (const p of pts) spawnParticle(p.x, p.y, p.w * 0.35);
+        for (const p of pts) spawnParticle(p.x, p.y, p.w * 0.35, branchesDissolve);
         continue;
       }
       const piece = this.makePiece(pts);
@@ -168,9 +171,15 @@ class Stroke {
     this.finished = true;
   }
 
+  // Healthy = still being drawn or not yet dissolving. Only healthy strokes can tangle or regrow.
+  isHealthy() {
+    return !this.finished || this.age < this.lifespan;
+  }
+
   // A new stroke made from some of this stroke's points. It keeps the same age.
   makePiece(pts) {
     const piece = new Stroke();
+    piece.id = this.id;                // pieces of one stroke still count as the same stroke
     piece.points = pts;
     piece.finished = this.finished;
     piece.age = this.age;
@@ -187,7 +196,7 @@ class Stroke {
 
   // The last bit of ink is gone: leftover branches start dissolving outward too
   dissolveAll() {
-    for (const p of this.points) if (random() < 0.5) spawnParticle(p.x, p.y, p.w * 0.35);
+    for (const p of this.points) if (random() < 0.5) spawnParticle(p.x, p.y, p.w * 0.35, true);
     for (const b of this.branches) dissolveBranch(b);
   }
 
@@ -328,6 +337,7 @@ function ageStrokes() {
 }
 
 function startStroke() {
+  strokesStarted++;
   currentStroke = new Stroke();
   strokes.push(currentStroke);
   // Limit how many strokes exist at once (keeps the frame rate up).

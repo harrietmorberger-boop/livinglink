@@ -80,7 +80,7 @@ const CONFIG = {
   decaySeconds: 12,              // seconds it then takes to dissolve completely
   dissolveFrom: "start",         // where dissolving begins: "start" of the drawn line, "end" of it, or "random" patches
   dissolveRagged: 0.2,           // 0 = a clean moving edge, higher = a more ragged, patchy edge
-  branchDissolveSpeed: 90,       // how fast a cut-loose branch dissolves outward (pixels per second)
+  branchDissolveSpeed: 65,       // how fast a cut-loose branch dissolves outward (pixels per second)
   branchDissolveParticles: 0.12, // particles shed per pixel of branch dissolved
   decayParticleChance: 0.7,      // chance each bit of dissolving ink becomes a particle
   eraseParticleChance: 0.3,      // same, for ink removed with the palm eraser
@@ -92,8 +92,26 @@ const CONFIG = {
   floatUp: 0.01,                 // gentle upward float
   particleDrag: 0.97,            // slows particles down (1 = never, 0.9 = quickly)
 
+  // ---- Stroke interaction ----
+  // TANGLING: growing branches reach toward other strokes and curl round them.
+  tangleChance: 0.5,             // chance a branch is able to tangle at all (0 = tangling off)
+  tangleRadius: 50,              // how close (pixels) another stroke must be to pull a branch
+  tangleStrength: 0.08,          // how strongly it bends toward the other stroke
+  maxTanglesPerStroke: 8,        // each stroke ties at most this many knots
+  tangleTouch: 8,                // how close counts as touching
+  tangleCurlLength: 28,          // how long the curl round the knot is (pixels)
+  tangleCurlBend: 0.12,          // how tight that curl is (radians per pixel)
+  // REGROWTH: particles from a dying stroke landing on a living one.
+  particleSeedChance: 0.15,      // chance a landing particle starts a new branch (0 = regrowth off)
+  particleHitDistance: 10,       // how close a particle must be to count as landing
+  maxParticleSeedsPerSecond: 1.5, // stops regrowth running away
+  gridCell: 50,                  // size of the boxes used to find neighbours (keep >= tangleRadius)
+
+  // ---- Help text ----
+  showHelp: true,                // gesture instructions along the bottom of the screen
+
   // ---- Testing helpers ----
-  showRawPoint: true,            // small orange dot = unsmoothed hand, to compare
+  showRawPoint: false,           // small orange dot = unsmoothed hand, to compare
   showPreview: true,             // small camera picture in the corner
   previewWidth: 200,
   showDebug: true,               // gesture label, fps, mode text

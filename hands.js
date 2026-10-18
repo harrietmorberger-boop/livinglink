@@ -60,3 +60,21 @@ function videoToCanvas(pt) {
     y: ny * height,
   };
 }
+
+// Works out whether the camera or model has a problem, and returns a message
+// to show the user (or null if all is well).
+function cameraProblem() {
+  if (mouseMode) return null;
+  if (!window.isSecureContext) {
+    return "The camera only works from localhost or https. Open this page through a local server (see README).";
+  }
+  const feedOk = video && video.elt && video.elt.srcObject && video.elt.readyState >= 2;
+  if (millis() > 5000 && !feedOk) {
+    return "No camera picture. Click Allow when the browser asks to use the camera " +
+           "(or check the camera icon in the address bar), then refresh. Press M to try mouse mode.";
+  }
+  if (millis() > 20000 && !modelReady) {
+    return "The hand tracking model is taking a long time to load. Check your internet connection, then refresh.";
+  }
+  return null;
+}

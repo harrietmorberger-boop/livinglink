@@ -1,9 +1,10 @@
 // ============================================================
 // SKETCH - the main p5 file. setup() runs once, draw() runs every frame.
-// STAGE 5: strokes age, dissolve and shed drifting particles.
+// STAGE 6: strokes tangle and regrow from particles; help and error messages.
 // ============================================================
 
 let mouseMode = CONFIG.mouseModeStartsOn;
+let debugOn = CONFIG.showDebug;   // press D to hide or show the testing text
 
 function preload() {
   startHandTracking();
@@ -23,13 +24,18 @@ function draw() {
   growStrokes();     // 4. let the branches grow (paused while frozen)
   ageStrokes();      // 5. age the strokes; old ones dissolve (paused while frozen)
   updateParticles(); // 6. move the particles (paused while frozen)
+  updateInteractions(); // 7. particles landing on living strokes (paused while frozen)
 
   drawStrokes();
   drawParticles();
+  drawSparks();
   if (pointer.visible) drawPointer();
   if (gesture === "fist") drawFrozenBorder();
 
   drawPreview();
+  drawHelp();
+  drawStatusMessage();
+  drawGestureLabel();
   drawDebugText();
 }
 
@@ -63,7 +69,7 @@ function drawPointer() {
     circle(x, y, 14);
   }
   // Orange dot = where the hand really is, before smoothing (for comparing)
-  if (CONFIG.showRawPoint) {
+  if (CONFIG.showRawPoint && debugOn) {
     noStroke(); fill(255, 150, 60, 200);
     circle(pointer.rawX, pointer.rawY, 6);
   }
@@ -97,40 +103,40 @@ function drawPreview() {
   rect(x, y, w, h);
 }
 
-// Text in the top-left so we can see what the program thinks is happening
-function drawDebugText() {
-  if (!CONFIG.showDebug) return;
-  noStroke();
-  fill(255, 170);
-  textSize(14);
-  textAlign(LEFT, TOP);
-  let status;
-  if (mouseMode) status = "MOUSE MODE (press M for camera)";
-  else if (!modelReady) status = "Loading hand model...";
-  else if (!pointer.visible) status = "No hand seen";
-  else status = "Hand tracked";
-  text(status, 16, 16);
-  text("fps: " + nf(frameRate(), 2, 0) + "   tracking: " + nf(trackingRate, 2, 0) + "/s   strokes: " + strokes.length + "   branches: " + branchTotal + "   particles: " + particles.length +
-       "   speed: " + nf(pointer.speed, 1, 1), 16, 36);
-  if (!mouseMode) {
-    text("pinch gap: " + nf(gestureInfo.pinchRatio, 1, 2) +
-         "  (start < " + CONFIG.pinchStart + ", release > " + CONFIG.pinchRelease + ")", 16, 56);
-    text("fingers curled: " + gestureInfo.curled + "  extended: " + gestureInfo.extended, 16, 76);
-  } else {
-    text("click = draw, hold E = erase, hold F = freeze", 16, 56);
-  }
-
-  // Big gesture label, top centre
+// The big gesture word at the top of the screen (always visible, it helps new users)
+function drawGestureLabel() {
   const g = GESTURE_LABELS[gesture];
+  noStroke();
   textAlign(CENTER, TOP);
   textSize(36);
   fill(...g.col);
   text(g.text, width / 2, 16);
 }
 
+// Testing text in the top-left (press D to hide it)
+function drawDebugText() {
+  if (!debugOn) return;
+  noStroke();
+  fill(255, 170);
+  textSize(14);
+  textAlign(LEFT, TOP);
+  text(mouseMode ? "MOUSE MODE (press M for camera)" : "Camera mode (press M for mouse mode)", 16, 16);
+  text("fps: " + nf(frameRate(), 2, 0) + "   tracking: " + nf(trackingRate, 2, 0) + "/s   strokes: " + strokes.length +
+       "   branches: " + branchTotal + "   particles: " + particles.length + "   speed: " + nf(pointer.speed, 1, 1), 16, 36);
+  text("tangles: " + stats.tangles + "   regrown from particles: " + stats.regrown + "   (D hides this text)", 16, 56);
+  if (!mouseMode) {
+    text("pinch gap: " + nf(gestureInfo.pinchRatio, 1, 2) +
+         "  (start < " + CONFIG.pinchStart + ", release > " + CONFIG.pinchRelease + ")", 16, 76);
+    text("fingers curled: " + gestureInfo.curled + "  extended: " + gestureInfo.extended, 16, 96);
+  } else {
+    text("click = draw, hold E = erase, hold F = freeze", 16, 76);
+  }
+}
+
 // Keyboard is only for testing. The real tool is hand-only.
 function keyPressed() {
   if (key === "m" || key === "M") mouseMode = !mouseMode;
+  if (key === "d" || key === "D") debugOn = !debugOn;
 }
 
 function windowResized() {
