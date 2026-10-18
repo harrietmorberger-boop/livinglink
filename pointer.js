@@ -64,5 +64,6 @@ function updatePointer() {
   // Speed = how far we actually moved this frame, averaged a little so it's steady.
   // Stage 4 uses this to decide how thick and branchy a stroke is.
   const moved = dist(oldX, oldY, pointer.x, pointer.y);
-  pointer.speed = lerp(pointer.speed, moved, 0.2);
+  // Scaled so a 900px tall screen is the "standard" (so settings feel the same on any screen)
+  pointer.speed = lerp(pointer.speed, moved * (900 / height), 0.2);
 }
