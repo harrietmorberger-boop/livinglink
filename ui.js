@@ -22,7 +22,9 @@ function drawStatusMessage() {
   const problem = cameraProblem();
   if (problem) msg = problem;
   else if (!mouseMode && !modelReady) msg = "Loading hand tracking...";
-  else if (!mouseMode && gesture === "nohand") msg = "Hold your hand up to the camera";
+  // Only before the very first stroke. After that, hands often leave the camera on purpose
+  // (for example to watch a drawing dissolve), so the prompt would just be in the way.
+  else if (!mouseMode && gesture === "nohand" && strokesStarted === 0) msg = "Hold your hand up to the camera";
   if (!msg) return;
 
   noStroke();
