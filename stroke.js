@@ -15,7 +15,7 @@ class Stroke {
     this.points = [];        // each point: { x, y, w (thickness), amount (0..1 speed) }
     this.branches = [];      // the first branches growing off this stroke
     this.sinceSeed = 0;      // pixels drawn since the last branch started
-    this.side = 1;           // branches alternate left / right of the stroke
+    this.nextGap = CONFIG.seedGapSlow * random(0.3, 1);   // pixels until the next branch (randomised)
     this.curve = [];         // smooth version of the points, rebuilt when they change
     this.dirty = true;
   }
@@ -43,10 +43,13 @@ class Stroke {
     // Should a new branch start here? Fast hand = more often.
     if (last) {
       this.sinceSeed += dist(last.x, last.y, x, y);
-      const gap = lerp(CONFIG.seedGapSlow, CONFIG.seedGapFast, amount);
-      if (this.sinceSeed >= gap && branchTotal < CONFIG.maxBranches) {
+      if (this.sinceSeed >= this.nextGap && branchTotal < CONFIG.maxBranches) {
         this.seedBranch(point, amount);
         this.sinceSeed = 0;
+        // Pick a random distance to the next branch, so they come in clusters and
+        // gaps instead of evenly spaced. Fast hand = shorter average distance.
+        this.nextGap = lerp(CONFIG.seedGapSlow, CONFIG.seedGapFast, amount) *
+                       random(CONFIG.seedGapJitterMin, CONFIG.seedGapJitterMax);
       }
     }
   }
@@ -57,9 +60,9 @@ class Stroke {
     // Which way is the stroke heading? Look back a few points.
     const back = this.points[max(0, n - 6)];
     const heading = atan2(point.y - back.y, point.x - back.x);
-    // Leave the stroke at an angle, alternating sides
-    this.side *= -1;
-    const angle = heading + this.side * radians(CONFIG.seedAngle) + random(-0.25, 0.25);
+    // Leave the stroke at a slightly random angle, on a random side
+    const side = random([-1, 1]);
+    const angle = heading + side * radians(CONFIG.seedAngle) * random(0.6, 1.4) + random(-0.3, 0.3);
     // Fast hand = longer branches
     const len = lerp(CONFIG.branchLengthSlow, CONFIG.branchLengthFast, amount) * random(0.8, 1.2);
     const width = max(CONFIG.minBranchWidth, point.w * CONFIG.branchStartWidth);

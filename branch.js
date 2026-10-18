@@ -30,7 +30,8 @@ class Branch {
     this.depth = depth;                   // 0 = first branch off the stroke
     this.amount = amount;
     this.anchor = anchor;
-    this.bend = random(-0.025, 0.025);    // how much it curves as it grows (radians per pixel)
+    // How much it curves as it grows (radians per pixel). Always at least a little curved.
+    this.bend = random(CONFIG.branchCurveMin, CONFIG.branchCurveMax) * random([-1, 1]);
     this.growSpeed = lerp(CONFIG.growSpeedSlow, CONFIG.growSpeedFast, amount);
     this.maxDepth = round(lerp(CONFIG.maxDepthSlow, CONFIG.maxDepthFast, amount));
     this.done = false;
@@ -70,8 +71,10 @@ class Branch {
     const tip = this.points[this.points.length - 1];
     const childWidth = max(CONFIG.minBranchWidth, this.width * CONFIG.branchThin);
     const spread = radians(CONFIG.branchAngle);
-    // Fast hand = 2 branches (a fork). Slow hand = 1 (a gentle tendril).
-    const count = (this.amount > 0.4 || this.depth === 0) && random() < lerp(0.5, 1, this.amount) ? 2 : 1;
+    // Sometimes a fork (2 branches), sometimes a single curl (1 branch).
+    // A fast hand forks more often than a slow one.
+    const forkChance = lerp(CONFIG.forkChanceSlow, CONFIG.forkChanceFast, this.amount);
+    const count = random() < forkChance ? 2 : 1;
 
     for (let i = 0; i < count; i++) {
       const side = count === 2 ? (i === 0 ? -1 : 1) : random([-1, 1]) * 0.5;

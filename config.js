@@ -53,20 +53,26 @@ const CONFIG = {
   // Each setting has a Slow and Fast version. Your hand speed picks a value in between.
   seedGapSlow: 40,               // pixels of stroke between new branches (slow hand: few)
   seedGapFast: 28,               // ...(fast hand: many)
+  seedGapJitterMin: 0.25,        // each gap is randomly 0.25x to 2x the number above,
+  seedGapJitterMax: 2.0,         // so branches bunch up and spread out instead of being even
   seedAngle: 40,                 // degrees a branch leaves the stroke at
-  branchLengthSlow: 20,          // how long a first branch grows (pixels)
-  branchLengthFast: 55,
+  branchLengthSlow: 18,          // how long a first branch grows (pixels)
+  branchLengthFast: 48,
   growSpeedSlow: 0.35,           // how fast branches grow (pixels per frame)
   growSpeedFast: 1.5,
-  maxDepthSlow: 1,               // how many times a branch may fork into smaller ones
-  maxDepthFast: 3,
+  maxDepthSlow: 3,               // how many times a branch may fork into smaller ones
+  maxDepthFast: 4,
+  forkChanceSlow: 0.45,          // chance a finished branch forks in two (otherwise it makes one curl)
+  forkChanceFast: 0.72,
+  branchCurveMin: 0.015,         // how much branches curve as they grow (radians per pixel)
+  branchCurveMax: 0.05,          // bigger = curlier
   branchAngle: 28,               // degrees between a fork's two new branches
   branchShrink: 0.7,             // each generation is 70% as long as the last (Shiffman uses 0.67)
   branchStartWidth: 0.5,         // first branch is half as thick as the stroke it grows from
   branchThin: 0.7,               // each generation is 70% as thick as the last
   minBranchWidth: 1.5,
-  minBranchLength: 8,            // stop forking when a branch would be shorter than this
-  maxBranches: 800,              // total on screen at once (performance safety)
+  minBranchLength: 5,            // stop forking when a branch would be shorter than this
+  maxBranches: 1000,             // total on screen at once (performance safety)
 
   // ---- Testing helpers ----
   showRawPoint: true,            // small orange dot = unsmoothed hand, to compare
