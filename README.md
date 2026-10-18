@@ -21,9 +21,11 @@ You need an internet connection the first time (the libraries and hand model loa
 ## Keys (testing only)
 
 - `M` = switch mouse mode on/off (mouse replaces the fingertip)
+- In mouse mode: click = draw, hold `E` = erase, hold `F` = freeze
 
 ## Files
 
 - `config.js` all settings
 - `hands.js` webcam + hand tracking
+- `gestures.js` pinch / palm / fist detection
 - `sketch.js` main loop and on-screen UI

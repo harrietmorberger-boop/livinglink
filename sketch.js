@@ -1,6 +1,6 @@
 // ============================================================
 // SKETCH - the main p5 file. setup() runs once, draw() runs every frame.
-// STAGE 1: webcam + handPose + a dot on the index fingertip.
+// STAGE 2: adds pinch / palm / fist detection and on-screen labels.
 // ============================================================
 
 let mouseMode = CONFIG.mouseModeStartsOn;
@@ -19,17 +19,34 @@ function draw() {
   // Where is the "pointer"? Fingertip normally, mouse in mouse mode.
   const tip = mouseMode ? { x: mouseX, y: mouseY } : getIndexTip();
 
-  // The glowing dot on the fingertip
-  if (tip) {
-    noStroke();
-    fill(...CONFIG.inkColor, 60);
-    circle(tip.x, tip.y, 44);          // soft glow
-    fill(...CONFIG.inkColor);
-    circle(tip.x, tip.y, 16);          // solid centre
-  }
+  updateGesture();   // work out the stable gesture for this frame
+
+  // The dot on the fingertip. Its look changes with the gesture.
+  if (tip) drawPointer(tip);
 
   drawPreview();
   drawDebugText(tip);
+}
+
+// The fingertip dot. Shape tells you the gesture even without reading the label.
+function drawPointer(tip) {
+  const c = GESTURE_LABELS[gesture].col;
+  noStroke();
+  fill(...c, 50);
+  circle(tip.x, tip.y, 44);                 // soft glow
+  if (gesture === "pinch") {                // solid dot = drawing
+    fill(...c);
+    circle(tip.x, tip.y, 18);
+  } else if (gesture === "palm") {          // big ring = eraser
+    noFill(); stroke(...c); strokeWeight(2);
+    circle(tip.x, tip.y, 70);
+  } else if (gesture === "fist") {          // square = frozen
+    noFill(); stroke(...c); strokeWeight(2);
+    rectMode(CENTER); square(tip.x, tip.y, 30);
+  } else {                                  // small hollow dot = just hovering
+    noFill(); stroke(...c); strokeWeight(2);
+    circle(tip.x, tip.y, 14);
+  }
 }
 
 // Small mirrored camera picture in the bottom-right corner
@@ -73,6 +90,20 @@ function drawDebugText(tip) {
   else status = "Hand tracked";
   text(status, 16, 16);
   text("fps: " + nf(frameRate(), 2, 0), 16, 36);
+  if (!mouseMode) {
+    text("pinch gap: " + nf(gestureInfo.pinchRatio, 1, 2) +
+         "  (start < " + CONFIG.pinchStart + ", release > " + CONFIG.pinchRelease + ")", 16, 56);
+    text("fingers curled: " + gestureInfo.curled + "  extended: " + gestureInfo.extended, 16, 76);
+  } else {
+    text("click = draw, hold E = erase, hold F = freeze", 16, 56);
+  }
+
+  // Big gesture label, top centre
+  const g = GESTURE_LABELS[gesture];
+  textAlign(CENTER, TOP);
+  textSize(36);
+  fill(...g.col);
+  text(g.text, width / 2, 16);
 }
 
 // Keyboard is only for testing. The real tool is hand-only.
