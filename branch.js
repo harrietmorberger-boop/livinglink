@@ -31,7 +31,9 @@ class Branch {
     this.amount = amount;
     this.anchor = anchor;
     // How much it curves as it grows (radians per pixel). Always at least a little curved.
-    this.bend = random(CONFIG.branchCurveMin, CONFIG.branchCurveMax) * random([-1, 1]);
+    // A fast hand makes straighter, stick-like branches (see branchStraightFast).
+    this.bend = random(CONFIG.branchCurveMin, CONFIG.branchCurveMax) * random([-1, 1]) *
+                lerp(1, 1 - CONFIG.branchStraightFast, amount);
     this.growSpeed = lerp(CONFIG.growSpeedSlow, CONFIG.growSpeedFast, amount);
     this.maxDepth = round(lerp(CONFIG.maxDepthSlow, CONFIG.maxDepthFast, amount));
     this.done = false;
