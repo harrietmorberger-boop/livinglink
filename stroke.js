@@ -27,8 +27,7 @@ class Stroke {
     this.age = 0;            // seconds since it was finished
     this.lifespan = CONFIG.lifespan * random(0.8, 1.2);   // each stroke lives a slightly different time
     this.alphaScale = 1;     // 1 = solid, fades to 0 right at the end
-    this.noiseSeed = random(1000);   // makes the dissolve patchy but smooth along the stroke
-    this.pointCounter = 0;
+    this.noiseSeed = random(1000);   // makes the edge of the dissolve ragged but smooth
   }
 
   // Add a point, but only if the pointer has moved far enough from the last one.
@@ -42,11 +41,8 @@ class Stroke {
     const target = lerp(CONFIG.strokeWidthMin, CONFIG.strokeWidthMax, amount);
     const w = last ? lerp(last.w, target, 0.2) : target;
     // dieAt: when (0 to 1) through the dissolve this bit of ink will disappear.
-    // Using noise() means neighbouring points go at similar times, so the stroke
-    // breaks into chunks instead of looking like static.
-    const n = noise(this.noiseSeed + this.pointCounter++ * 0.06);
-    const dieAt = constrain(map(n, 0.25, 0.75, 0, 1), 0, 1);
-    const point = { x, y, w, amount, dieAt };
+    // It is filled in by finish() once the stroke is complete (we need to know how long it is).
+    const point = { x, y, w, amount, dieAt: 0 };
     this.points.push(point);
     this.dirty = true;
 
@@ -150,6 +146,26 @@ class Stroke {
     return result;
   }
 
+  // Called once when you let go. Decides the ORDER the ink will dissolve in.
+  // dissolveFrom "start" = it eats along the line from where you began drawing,
+  // "end" = from where you finished, "random" = patches all over.
+  finish() {
+    const n = this.points.length;
+    for (let i = 0; i < n; i++) {
+      const along = n > 1 ? i / (n - 1) : 0;          // 0 at the start of the line, 1 at the end
+      // A smooth random value, mapped to 0..1, to make the dissolving front ragged
+      const ragged = constrain(map(noise(this.noiseSeed + i * 0.08), 0.25, 0.75, 0, 1), 0, 1);
+      let order;
+      if (CONFIG.dissolveFrom === "start") order = along;
+      else if (CONFIG.dissolveFrom === "end") order = 1 - along;
+      else order = ragged;
+      this.points[i].dieAt = CONFIG.dissolveFrom === "random"
+        ? order
+        : lerp(order, ragged, CONFIG.dissolveRagged);
+    }
+    this.finished = true;
+  }
+
   // A new stroke made from some of this stroke's points. It keeps the same age.
   makePiece(pts) {
     const piece = new Stroke();
@@ -158,7 +174,6 @@ class Stroke {
     piece.age = this.age;
     piece.lifespan = this.lifespan;
     piece.alphaScale = this.alphaScale;
-    piece.pointCounter = this.pointCounter;
     return piece;
   }
 
@@ -317,7 +332,7 @@ function endStroke() {
     const i = strokes.indexOf(currentStroke);
     if (i >= 0) strokes.splice(i, 1);
   }
-  currentStroke.finished = true;             // from now on it ages
+  currentStroke.finish();                    // work out the dissolve order; from now on it ages
   currentStroke = null;
 }
 

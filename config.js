@@ -76,8 +76,10 @@ const CONFIG = {
   maxBranches: 1300,             // total on screen at once (performance safety)
 
   // ---- Life cycle: fading and particles ----
-  lifespan: 20,                  // seconds a finished stroke stays healthy (each one varies +-20%)
-  decaySeconds: 8,               // seconds it then takes to dissolve completely
+  lifespan: 12,                  // seconds a finished stroke stays healthy (each one varies +-20%)
+  decaySeconds: 11,              // seconds it then takes to dissolve completely
+  dissolveFrom: "start",         // where dissolving begins: "start" of the drawn line, "end" of it, or "random" patches
+  dissolveRagged: 0.2,           // 0 = a clean moving edge, higher = a more ragged, patchy edge
   decayParticleChance: 0.7,      // chance each bit of dissolving ink becomes a particle
   eraseParticleChance: 0.3,      // same, for ink removed with the palm eraser
   maxParticles: 600,             // total on screen at once (performance safety)
