@@ -23,12 +23,35 @@ class Stroke {
     if (this.points.length > CONFIG.maxPointsPerStroke) this.points.shift();
   }
 
-  // Is any point of this stroke inside a circle? (used by the eraser)
-  touches(x, y, radius) {
+  // Precision eraser: remove only the points inside the circle.
+  // If nothing was inside, returns null (stroke untouched).
+  // Otherwise returns a list of what is left. Erasing the middle of a stroke
+  // leaves TWO pieces, erasing the end leaves one shorter stroke, and erasing
+  // everything leaves an empty list.
+  erasePart(x, y, radius) {
+    let hitSomething = false;
+    const pieces = [];
+    let run = [];                      // the points we are keeping, in a row
     for (const p of this.points) {
-      if (dist(p.x, p.y, x, y) < radius) return true;
+      if (dist(p.x, p.y, x, y) < radius) {
+        hitSomething = true;           // this point is erased: close off the current run
+        if (run.length > 0) { pieces.push(run); run = []; }
+      } else {
+        run.push(p);
+      }
     }
-    return false;
+    if (!hitSomething) return null;
+    if (run.length > 0) pieces.push(run);
+
+    // Turn each run of points into its own stroke. Tiny leftovers are dropped.
+    const result = [];
+    for (const pts of pieces) {
+      if (pts.length < 3) continue;
+      const piece = new Stroke();
+      piece.points = pts;
+      result.push(piece);
+    }
+    return result;
   }
 
   display() {
@@ -38,7 +61,7 @@ class Stroke {
     strokeCap(ROUND);
     // Soft glow underneath, then the solid ink line on top
     stroke(...CONFIG.inkColor, 45);
-    strokeWeight(CONFIG.strokeWidth * 4);
+    strokeWeight(CONFIG.strokeWidth * CONFIG.strokeGlow);
     this.trace();
     stroke(...CONFIG.inkColor);
     strokeWeight(CONFIG.strokeWidth);
@@ -66,10 +89,11 @@ function updateDrawing() {
     endStroke();
   }
 
-  // PALM = erase every stroke the palm touches
+  // PALM = erase only the parts of strokes inside the eraser circle
   if (gesture === "palm" && pointer.visible) {
     for (let i = strokes.length - 1; i >= 0; i--) {
-      if (strokes[i].touches(pointer.x, pointer.y, CONFIG.eraseRadius)) strokes.splice(i, 1);
+      const left = strokes[i].erasePart(pointer.x, pointer.y, CONFIG.eraseRadius);
+      if (left) strokes.splice(i, 1, ...left);   // swap the old stroke for what is left
     }
   }
 }

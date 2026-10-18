@@ -32,11 +32,12 @@ const CONFIG = {
   handMargin: 0.12,              // ignore the camera's outer 12% so you can reach the screen edges
 
   // ---- Drawing ----
-  strokeWidth: 3,                // line thickness in pixels (Stage 4 makes this speed-based)
+  strokeWidth: 9,                // line thickness in pixels, like a paint stroke (Stage 4 makes this speed-based)
+  strokeGlow: 2.2,               // soft glow is this many times wider than the line
   minPointDistance: 4,           // a new point is added every 4px of movement
   maxPointsPerStroke: 1500,
   maxStrokes: 30,                // oldest stroke is removed beyond this
-  eraseRadius: 45,               // how big the palm eraser is
+  eraseRadius: 30,               // how big the palm eraser is (smaller = more precise)
 
   // ---- Testing helpers ----
   showRawPoint: true,            // small orange dot = unsmoothed hand, to compare
