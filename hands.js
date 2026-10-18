@@ -24,8 +24,18 @@ function startHandTracking() {
 }
 
 // ml5 calls this every time it has a new result
+// We also count how many results arrive per second ("tracking rate"). The model
+// is usually slower than the screen, and that limits how smooth fast drawing can be.
+let trackingRate = 0, trackCount = 0, trackStart = 0;
 function gotHands(results) {
   hands = results;
+  trackCount++;
+  const now = millis();
+  if (now - trackStart >= 1000) {
+    trackingRate = (trackCount * 1000) / (now - trackStart);
+    trackCount = 0;
+    trackStart = now;
+  }
 }
 
 // Returns the index fingertip as a point on the CANVAS, mirrored so that

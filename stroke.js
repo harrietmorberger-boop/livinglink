@@ -68,10 +68,16 @@ class Stroke {
     this.trace();
   }
 
-  // Draw the line through all the points
+  // Draw a smooth curve through all the points.
+  // curveVertex bends the line gently through each point instead of using
+  // straight segments, which rounds off the angles you get when the hand is fast.
+  // (p5 wants the first and last point repeated, that is what the extra lines do.)
   trace() {
+    const pts = this.points;
     beginShape();
-    for (const p of this.points) vertex(p.x, p.y);
+    curveVertex(pts[0].x, pts[0].y);
+    for (const p of pts) curveVertex(p.x, p.y);
+    curveVertex(pts[pts.length - 1].x, pts[pts.length - 1].y);
     endShape();
   }
 }

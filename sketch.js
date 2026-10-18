@@ -106,7 +106,7 @@ function drawDebugText() {
   else if (!pointer.visible) status = "No hand seen";
   else status = "Hand tracked";
   text(status, 16, 16);
-  text("fps: " + nf(frameRate(), 2, 0) + "   strokes: " + strokes.length +
+  text("fps: " + nf(frameRate(), 2, 0) + "   tracking: " + nf(trackingRate, 2, 0) + "/s   strokes: " + strokes.length +
        "   speed: " + nf(pointer.speed, 1, 1), 16, 36);
   if (!mouseMode) {
     text("pinch gap: " + nf(gestureInfo.pinchRatio, 1, 2) +
