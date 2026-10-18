@@ -28,7 +28,8 @@ const CONFIG = {
   // ---- Smoothing (the pen tip eases toward your real hand) ----
   smoothSlow: 0.08,              // easing when hand is still. Smaller = steadier but floatier
   smoothFast: 0.85,              // easing when hand moves fast. Bigger = less lag (1 = no smoothing)
-  smoothFastDistance: 25,        // how far behind (pixels) counts as "fast"
+  smoothFastDistance: 30,        // how far behind (pixels) counts as "fast"
+  curveTightness: 0.5,           // 0 = rounded curves (good for circles), 1 = straight segments (good for zigzags)
   handMargin: 0.12,              // ignore the camera's outer 12% so you can reach the screen edges
 
   // ---- Drawing ----

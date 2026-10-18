@@ -74,6 +74,7 @@ class Stroke {
   // (p5 wants the first and last point repeated, that is what the extra lines do.)
   trace() {
     const pts = this.points;
+    curveTightness(CONFIG.curveTightness);   // 0 = very curvy, 1 = straight lines
     beginShape();
     curveVertex(pts[0].x, pts[0].y);
     for (const p of pts) curveVertex(p.x, p.y);

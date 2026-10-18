@@ -50,7 +50,10 @@ function updatePointer() {
   // How far behind the real hand are we?
   const lag = dist(pointer.x, pointer.y, raw.x, raw.y);
   // 0 = barely behind (hand still), 1 = far behind (hand moving fast)
-  const t = constrain(lag / CONFIG.smoothFastDistance, 0, 1);
+  // Squaring it (t * t) keeps slow, careful drawing heavily smoothed and only
+  // lets the pen "speed up" when the hand is really moving.
+  let t = constrain(lag / CONFIG.smoothFastDistance, 0, 1);
+  t = t * t;
   // Small lag -> smoothSlow (heavy smoothing). Big lag -> smoothFast (light smoothing).
   const amount = lerp(CONFIG.smoothSlow, CONFIG.smoothFast, t);
 
