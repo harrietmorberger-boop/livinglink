@@ -52,7 +52,7 @@ const CONFIG = {
   // ---- Branches ----
   // Each setting has a Slow and Fast version. Your hand speed picks a value in between.
   seedGapSlow: 40,               // pixels of stroke between new branches (slow hand: few)
-  seedGapFast: 45,               // ...(fast hand: many)
+  seedGapFast: 28,               // ...(fast hand: many)
   seedAngle: 40,                 // degrees a branch leaves the stroke at
   branchLengthSlow: 20,          // how long a first branch grows (pixels)
   branchLengthFast: 55,
