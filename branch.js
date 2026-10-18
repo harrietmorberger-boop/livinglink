@@ -86,14 +86,15 @@ class Branch {
     }
   }
 
-  display() {
-    const a = max(90, 255 - this.depth * 35);          // thinner twigs are a bit fainter
+  // alphaScale: 1 = normal, 0 = invisible (used when the stroke is dying)
+  display(alphaScale) {
+    const a = max(90, 255 - this.depth * 35) * alphaScale;   // thinner twigs are a bit fainter
     stroke(...CONFIG.inkColor, a);
     strokeWeight(this.width);
     beginShape();
     for (const p of this.points) vertex(p.x, p.y);
     endShape();
-    for (const c of this.children) c.display();
+    for (const c of this.children) c.display(alphaScale);
   }
 
   // Does the eraser circle touch this branch? If so, it gets pruned, along with
@@ -107,9 +108,21 @@ class Branch {
   }
 
   // Remove touched branches from the tree below this one.
+  // Cut-off branches turn into particles.
   prune(x, y, r) {
-    this.children = this.children.filter(c => !c.touches(x, y, r));
+    this.children = this.children.filter(c => {
+      if (c.touches(x, y, r)) { c.burst(); return false; }
+      return true;
+    });
     for (const c of this.children) c.prune(x, y, r);
+  }
+
+  // Turn this branch (and everything on it) into drifting particles
+  burst() {
+    for (let i = 0; i < this.points.length; i += 3) {
+      if (random() < 0.7) spawnParticle(this.points[i].x, this.points[i].y, this.width * 0.6);
+    }
+    for (const c of this.children) c.burst();
   }
 
   // Adds up this branch and everything below it (for the on-screen count)

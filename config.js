@@ -39,7 +39,7 @@ const CONFIG = {
   curveStep: 6,                  // the smooth curve gets a point every ~6px (smaller = smoother, heavier)
   minPointDistance: 4,           // a new point is added every 4px of movement
   maxPointsPerStroke: 1500,
-  maxStrokes: 60,                // oldest stroke is removed beyond this (performance safety)
+  maxStrokes: 100,               // oldest stroke bursts into particles beyond this (performance safety)
   eraseRadius: 30,               // how big the palm eraser is (smaller = more precise)
 
   // ---- Hand speed ----
@@ -74,6 +74,19 @@ const CONFIG = {
   minBranchWidth: 1.5,
   minBranchLength: 5,            // stop forking when a branch would be shorter than this
   maxBranches: 1300,             // total on screen at once (performance safety)
+
+  // ---- Life cycle: fading and particles ----
+  lifespan: 20,                  // seconds a finished stroke stays healthy (each one varies +-20%)
+  decaySeconds: 8,               // seconds it then takes to dissolve completely
+  decayParticleChance: 0.7,      // chance each bit of dissolving ink becomes a particle
+  eraseParticleChance: 0.3,      // same, for ink removed with the palm eraser
+  maxParticles: 600,             // total on screen at once (performance safety)
+  particleLifeMin: 2,            // seconds a particle lives
+  particleLifeMax: 5,
+  driftForce: 0.05,              // how strongly the flow field pushes particles
+  driftScale: 0.004,             // size of the swirls (smaller = bigger, slower swirls)
+  floatUp: 0.01,                 // gentle upward float
+  particleDrag: 0.97,            // slows particles down (1 = never, 0.9 = quickly)
 
   // ---- Testing helpers ----
   showRawPoint: true,            // small orange dot = unsmoothed hand, to compare

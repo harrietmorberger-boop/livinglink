@@ -4,7 +4,10 @@
 // while you hold the pinch, and ends when you let go.
 // Each point remembers how fast the hand was moving, which sets its thickness
 // and how likely it is to sprout a branch.
-// (Stage 5 adds fading and particles to this class.)
+//
+// LIFE CYCLE: once you let go, the stroke starts to age. After its lifespan it
+// begins to dissolve: random chunks of ink disappear, shedding particles, until
+// nothing is left.
 // ============================================================
 
 const strokes = [];          // every stroke on screen
@@ -18,6 +21,14 @@ class Stroke {
     this.nextGap = CONFIG.seedGapSlow * random(0.3, 1);   // pixels until the next branch (randomised)
     this.curve = [];         // smooth version of the points, rebuilt when they change
     this.dirty = true;
+
+    // --- life cycle ---
+    this.finished = false;   // true once you let go (it only ages after that)
+    this.age = 0;            // seconds since it was finished
+    this.lifespan = CONFIG.lifespan * random(0.8, 1.2);   // each stroke lives a slightly different time
+    this.alphaScale = 1;     // 1 = solid, fades to 0 right at the end
+    this.noiseSeed = random(1000);   // makes the dissolve patchy but smooth along the stroke
+    this.pointCounter = 0;
   }
 
   // Add a point, but only if the pointer has moved far enough from the last one.
@@ -30,7 +41,12 @@ class Stroke {
     const amount = speedAmount(speed);
     const target = lerp(CONFIG.strokeWidthMin, CONFIG.strokeWidthMax, amount);
     const w = last ? lerp(last.w, target, 0.2) : target;
-    const point = { x, y, w, amount };
+    // dieAt: when (0 to 1) through the dissolve this bit of ink will disappear.
+    // Using noise() means neighbouring points go at similar times, so the stroke
+    // breaks into chunks instead of looking like static.
+    const n = noise(this.noiseSeed + this.pointCounter++ * 0.06);
+    const dieAt = constrain(map(n, 0.25, 0.75, 0, 1), 0, 1);
+    const point = { x, y, w, amount, dieAt };
     this.points.push(point);
     this.dirty = true;
 
@@ -76,56 +92,113 @@ class Stroke {
 
   // Precision eraser, part 1: cut off branches the eraser circle touches.
   eraseBranches(x, y, radius) {
-    this.branches = this.branches.filter(b => !b.touches(x, y, radius));
+    this.branches = this.branches.filter(b => {
+      if (b.touches(x, y, radius)) { b.burst(); return false; }
+      return true;
+    });
     for (const b of this.branches) b.prune(x, y, radius);
   }
 
   // Precision eraser, part 2: remove only the points inside the circle.
-  // If nothing was inside, returns null (stroke untouched).
-  // Otherwise returns a list of what is left. Erasing the middle of a stroke
-  // leaves TWO pieces, erasing the end leaves one shorter stroke, and erasing
-  // everything leaves an empty list. Branches stay with the piece they grew from.
+  // Returns null if nothing was inside (stroke untouched), otherwise a list of
+  // what is left. Erasing the middle leaves TWO pieces, erasing the end leaves one
+  // shorter stroke, erasing everything leaves an empty list.
   erasePart(x, y, radius) {
-    let hitSomething = false;
+    return this.splitWhere(p => dist(p.x, p.y, x, y) < radius, CONFIG.eraseParticleChance);
+  }
+
+  // The general "remove some points" tool. The eraser and the dissolving both use it.
+  // shouldRemove(point) says which points go. particleChance = chance each removed
+  // point turns into a particle. Branches stay with the piece they grew from.
+  splitWhere(shouldRemove, particleChance) {
+    const removed = [];
     const pieces = [];
     let run = [];                      // the points we are keeping, in a row
     for (const p of this.points) {
-      if (dist(p.x, p.y, x, y) < radius) {
-        hitSomething = true;           // this point is erased: close off the current run
+      if (shouldRemove(p)) {
+        removed.push(p);               // this point goes: close off the current run
         if (run.length > 0) { pieces.push(run); run = []; }
       } else {
         run.push(p);
       }
     }
-    if (!hitSomething) return null;
+    if (removed.length === 0) return null;
     if (run.length > 0) pieces.push(run);
 
-    // Turn each run of points into its own stroke. Tiny leftovers are dropped.
+    for (const p of removed) {
+      if (random() < particleChance) spawnParticle(p.x, p.y, p.w * 0.35);
+    }
+
+    // Turn each run of points into its own stroke. Tiny leftovers become particles.
     const result = [];
+    const owner = new Map();           // which new stroke owns each point
     for (const pts of pieces) {
-      if (pts.length < 3) continue;
-      const piece = new Stroke();
-      piece.points = pts;
-      piece.branches = this.branches.filter(b => pts.includes(b.anchor));
+      if (pts.length < 3) {
+        for (const p of pts) spawnParticle(p.x, p.y, p.w * 0.35);
+        continue;
+      }
+      const piece = this.makePiece(pts);
       result.push(piece);
+      for (const p of pts) owner.set(p, piece);
+    }
+    // Each branch goes with the piece it grew from. If that bit of ink is gone, it bursts.
+    for (const b of this.branches) {
+      const piece = owner.get(b.anchor);
+      if (piece) piece.branches.push(b);
+      else b.burst();
     }
     return result;
+  }
+
+  // A new stroke made from some of this stroke's points. It keeps the same age.
+  makePiece(pts) {
+    const piece = new Stroke();
+    piece.points = pts;
+    piece.finished = this.finished;
+    piece.age = this.age;
+    piece.lifespan = this.lifespan;
+    piece.alphaScale = this.alphaScale;
+    piece.pointCounter = this.pointCounter;
+    return piece;
+  }
+
+  // Turn the whole stroke into particles at once
+  burst(chance) {
+    for (const p of this.points) if (random() < chance) spawnParticle(p.x, p.y, p.w * 0.35);
+    for (const b of this.branches) b.burst();
+  }
+
+  // Called every frame once the stroke is finished. Returns:
+  //   null          = nothing changed
+  //   [] or [...]   = replace this stroke with these (empty list = it is gone)
+  ageStep(dt) {
+    this.age += dt;
+    // progress: 0 = still healthy, 1 = fully dissolved
+    const progress = constrain((this.age - this.lifespan) / CONFIG.decaySeconds, 0, 1);
+    if (progress <= 0) return null;
+
+    // Fade out over the last 30% so nothing pops away at the very end
+    this.alphaScale = 1 - constrain((progress - 0.7) / 0.3, 0, 1);
+    if (progress >= 1) { this.burst(0.5); return []; }
+
+    // Remove every point whose time has come
+    return this.splitWhere(p => p.dieAt < progress, CONFIG.decayParticleChance);
   }
 
   display() {
     if (this.points.length < 2) return;
     if (this.dirty) this.buildCurve();
     noStroke();
-    fill(...CONFIG.inkColor, 45);               // soft glow underneath
+    fill(...CONFIG.inkColor, 45 * this.alphaScale);   // soft glow underneath
     this.drawRibbon(CONFIG.strokeGlow);
-    fill(...CONFIG.inkColor);                   // solid ink on top
+    fill(...CONFIG.inkColor, 255 * this.alphaScale);  // solid ink on top
     this.drawRibbon(1);
 
     // The branches are thin lines
     noFill();
     strokeJoin(ROUND);
     strokeCap(ROUND);
-    for (const b of this.branches) b.display();
+    for (const b of this.branches) b.display(this.alphaScale);
   }
 
   // Draws the stroke as a ribbon: a filled shape that is wider where the hand was fast.
@@ -217,11 +290,24 @@ function growStrokes() {
   for (const s of strokes) for (const b of s.branches) branchTotal += b.count();
 }
 
+// Ages every finished stroke, so it eventually dissolves. Skipped while frozen (fist).
+function ageStrokes() {
+  if (gesture === "fist") return;
+  const dt = min(deltaTime, 50) / 1000;      // seconds since the last frame (capped)
+  for (let i = strokes.length - 1; i >= 0; i--) {
+    const s = strokes[i];
+    if (!s.finished) continue;               // still being drawn
+    const result = s.ageStep(dt);
+    if (result) strokes.splice(i, 1, ...result);
+  }
+}
+
 function startStroke() {
   currentStroke = new Stroke();
   strokes.push(currentStroke);
-  // Limit how many strokes exist at once (keeps the frame rate up)
-  if (strokes.length > CONFIG.maxStrokes) strokes.shift();
+  // Limit how many strokes exist at once (keeps the frame rate up).
+  // The oldest one bursts into particles so it doesn't just blink out.
+  if (strokes.length > CONFIG.maxStrokes) strokes.shift().burst(0.5);
 }
 
 function endStroke() {
@@ -231,6 +317,7 @@ function endStroke() {
     const i = strokes.indexOf(currentStroke);
     if (i >= 0) strokes.splice(i, 1);
   }
+  currentStroke.finished = true;             // from now on it ages
   currentStroke = null;
 }
 

@@ -29,6 +29,7 @@ You need an internet connection the first time (the libraries and hand model loa
 - `hands.js` webcam + hand tracking
 - `gestures.js` pinch / palm / fist detection
 - `pointer.js` smoothed pen tip
+- `particles.js` drifting ink particles
 - `branch.js` fractal branches that grow off strokes
-- `stroke.js` strokes: drawing, thickness, erasing
+- `stroke.js` strokes: drawing, thickness, erasing, ageing and dissolving
 - `sketch.js` main loop and on-screen UI

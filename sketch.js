@@ -1,6 +1,6 @@
 // ============================================================
 // SKETCH - the main p5 file. setup() runs once, draw() runs every frame.
-// STAGE 4: strokes grow branches; hand speed sets thickness and branching.
+// STAGE 5: strokes age, dissolve and shed drifting particles.
 // ============================================================
 
 let mouseMode = CONFIG.mouseModeStartsOn;
@@ -21,8 +21,11 @@ function draw() {
   updatePointer();   // 2. where is the smoothed pen tip?
   updateDrawing();   // 3. what does that gesture do to the strokes?
   growStrokes();     // 4. let the branches grow (paused while frozen)
+  ageStrokes();      // 5. age the strokes; old ones dissolve (paused while frozen)
+  updateParticles(); // 6. move the particles (paused while frozen)
 
   drawStrokes();
+  drawParticles();
   if (pointer.visible) drawPointer();
   if (gesture === "fist") drawFrozenBorder();
 
@@ -107,7 +110,7 @@ function drawDebugText() {
   else if (!pointer.visible) status = "No hand seen";
   else status = "Hand tracked";
   text(status, 16, 16);
-  text("fps: " + nf(frameRate(), 2, 0) + "   tracking: " + nf(trackingRate, 2, 0) + "/s   strokes: " + strokes.length + "   branches: " + branchTotal +
+  text("fps: " + nf(frameRate(), 2, 0) + "   tracking: " + nf(trackingRate, 2, 0) + "/s   strokes: " + strokes.length + "   branches: " + branchTotal + "   particles: " + particles.length +
        "   speed: " + nf(pointer.speed, 1, 1), 16, 36);
   if (!mouseMode) {
     text("pinch gap: " + nf(gestureInfo.pinchRatio, 1, 2) +
