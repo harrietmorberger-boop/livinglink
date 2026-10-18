@@ -100,13 +100,13 @@ class Stroke {
   // what is left. Erasing the middle leaves TWO pieces, erasing the end leaves one
   // shorter stroke, erasing everything leaves an empty list.
   erasePart(x, y, radius) {
-    return this.splitWhere(p => dist(p.x, p.y, x, y) < radius, CONFIG.eraseParticleChance);
+    return this.splitWhere(p => dist(p.x, p.y, x, y) < radius, CONFIG.eraseParticleChance, false);
   }
 
   // The general "remove some points" tool. The eraser and the dissolving both use it.
   // shouldRemove(point) says which points go. particleChance = chance each removed
   // point turns into a particle. Branches stay with the piece they grew from.
-  splitWhere(shouldRemove, particleChance) {
+  splitWhere(shouldRemove, particleChance, branchesDissolve) {
     const removed = [];
     const pieces = [];
     let run = [];                      // the points we are keeping, in a row
@@ -137,10 +137,12 @@ class Stroke {
       result.push(piece);
       for (const p of pts) owner.set(p, piece);
     }
-    // Each branch goes with the piece it grew from. If that bit of ink is gone, it bursts.
+    // Each branch goes with the piece it grew from. If that bit of ink is gone, the
+    // branch is cut loose: it dissolves outward (when the stroke is dying) or bursts (eraser).
     for (const b of this.branches) {
       const piece = owner.get(b.anchor);
       if (piece) piece.branches.push(b);
+      else if (branchesDissolve) dissolveBranch(b);
       else b.burst();
     }
     return result;
@@ -183,6 +185,12 @@ class Stroke {
     for (const b of this.branches) b.burst();
   }
 
+  // The last bit of ink is gone: leftover branches start dissolving outward too
+  dissolveAll() {
+    for (const p of this.points) if (random() < 0.5) spawnParticle(p.x, p.y, p.w * 0.35);
+    for (const b of this.branches) dissolveBranch(b);
+  }
+
   // Called every frame once the stroke is finished. Returns:
   //   null          = nothing changed
   //   [] or [...]   = replace this stroke with these (empty list = it is gone)
@@ -194,10 +202,10 @@ class Stroke {
 
     // Fade out over the last 30% so nothing pops away at the very end
     this.alphaScale = 1 - constrain((progress - 0.7) / 0.3, 0, 1);
-    if (progress >= 1) { this.burst(0.5); return []; }
+    if (progress >= 1) { this.dissolveAll(); return []; }
 
     // Remove every point whose time has come
-    return this.splitWhere(p => p.dieAt < progress, CONFIG.decayParticleChance);
+    return this.splitWhere(p => p.dieAt < progress, CONFIG.decayParticleChance, true);
   }
 
   display() {
@@ -303,12 +311,14 @@ function growStrokes() {
   if (gesture !== "fist") for (const s of strokes) s.grow();
   branchTotal = 0;
   for (const s of strokes) for (const b of s.branches) branchTotal += b.count();
+  for (const b of dyingBranches) branchTotal += b.count();
 }
 
 // Ages every finished stroke, so it eventually dissolves. Skipped while frozen (fist).
 function ageStrokes() {
   if (gesture === "fist") return;
   const dt = min(deltaTime, 50) / 1000;      // seconds since the last frame (capped)
+  updateDyingBranches(dt);
   for (let i = strokes.length - 1; i >= 0; i--) {
     const s = strokes[i];
     if (!s.finished) continue;               // still being drawn
@@ -338,4 +348,5 @@ function endStroke() {
 
 function drawStrokes() {
   for (const s of strokes) s.display();
+  drawDyingBranches();
 }

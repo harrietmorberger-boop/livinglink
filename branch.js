@@ -117,7 +117,42 @@ class Branch {
     for (const c of this.children) c.prune(x, y, r);
   }
 
-  // Turn this branch (and everything on it) into drifting particles
+  // --- Dissolving outward, from the drawn line to the tips ---
+  // When the ink a branch grew from dissolves, the branch is "cut loose" and starts
+  // to dissolve: it is eaten away from its base toward its tip. Only when it has
+  // gone completely do the smaller branches on it start doing the same.
+  startDying() {
+    this.dying = true;
+    this.done = true;            // stop growing and forking
+  }
+
+  // Eat a little of the branch. Returns true when this branch and all its children are gone.
+  dissolveStep(dt) {
+    if (this.points.length > 1) {
+      let budget = CONFIG.branchDissolveSpeed * dt;     // pixels to eat this frame
+      while (budget > 0 && this.points.length > 1) {
+        const p0 = this.points[0], p1 = this.points[1];
+        const seg = dist(p0.x, p0.y, p1.x, p1.y);
+        if (random() < budget * CONFIG.branchDissolveParticles) {
+          spawnParticle(p0.x, p0.y, this.width * 0.6);
+        }
+        if (seg <= budget) {                            // eat the whole piece up to the next point
+          budget -= seg;
+          this.points.shift();
+        } else {                                        // eat part of it: slide the start along
+          p0.x += (p1.x - p0.x) * budget / seg;
+          p0.y += (p1.y - p0.y) * budget / seg;
+          budget = 0;
+        }
+      }
+      return false;                                     // still has branch left
+    }
+    // This branch is gone: now its children dissolve
+    this.children = this.children.filter(c => !c.dissolveStep(dt));
+    return this.children.length === 0;
+  }
+
+  // Turn this branch (and everything on it) into drifting particles instantly
   burst() {
     for (let i = 0; i < this.points.length; i += 3) {
       if (random() < 0.7) spawnParticle(this.points[i].x, this.points[i].y, this.width * 0.6);
@@ -140,4 +175,25 @@ function distToSegment(px, py, ax, ay, bx, by) {
   let t = lenSq === 0 ? 0 : ((px - ax) * dx + (py - ay) * dy) / lenSq;
   t = constrain(t, 0, 1);
   return dist(px, py, ax + t * dx, ay + t * dy);
+}
+
+// ---- Branches that have been cut loose from a dissolving stroke ----
+const dyingBranches = [];
+
+function dissolveBranch(branch) {
+  branch.startDying();
+  dyingBranches.push(branch);
+}
+
+function updateDyingBranches(dt) {
+  for (let i = dyingBranches.length - 1; i >= 0; i--) {
+    if (dyingBranches[i].dissolveStep(dt)) dyingBranches.splice(i, 1);
+  }
+}
+
+function drawDyingBranches() {
+  noFill();
+  strokeJoin(ROUND);
+  strokeCap(ROUND);
+  for (const br of dyingBranches) br.display(1);
 }
