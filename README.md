@@ -28,4 +28,6 @@ You need an internet connection the first time (the libraries and hand model loa
 - `config.js` all settings
 - `hands.js` webcam + hand tracking
 - `gestures.js` pinch / palm / fist detection
+- `pointer.js` smoothed pen tip
+- `stroke.js` strokes: drawing and erasing
 - `sketch.js` main loop and on-screen UI

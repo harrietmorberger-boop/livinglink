@@ -39,9 +39,14 @@ function getIndexTip() {
 }
 
 // Convert a point in camera pixels into canvas pixels, and mirror it.
+// handMargin: your hand is hard to track at the very edge of the camera view,
+// so we stretch the middle of the camera view to cover the whole canvas.
 function videoToCanvas(pt) {
+  const m = CONFIG.handMargin;
+  const nx = constrain((pt.x / CONFIG.videoWidth - m) / (1 - 2 * m), 0, 1);
+  const ny = constrain((pt.y / CONFIG.videoHeight - m) / (1 - 2 * m), 0, 1);
   return {
-    x: width - (pt.x / CONFIG.videoWidth) * width, // "width -" = the mirror flip
-    y: (pt.y / CONFIG.videoHeight) * height,
+    x: (1 - nx) * width,   // "1 - nx" = the mirror flip
+    y: ny * height,
   };
 }

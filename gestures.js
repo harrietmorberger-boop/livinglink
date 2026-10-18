@@ -95,6 +95,13 @@ function getPinchPoint() {
   return videoToCanvas({ x: (t.x + i.x) / 2, y: (t.y + i.y) / 2 });
 }
 
+// Middle of the palm (the knuckle of the middle finger). The eraser follows this.
+function getPalmPoint() {
+  if (hands.length === 0) return null;
+  const p = hands[0].keypoints.find(k => k.name === "middle_finger_mcp");
+  return p ? videoToCanvas(p) : null;
+}
+
 // Friendly text + colour for each gesture (for the on-screen label)
 const GESTURE_LABELS = {
   pinch:  { text: "DRAW",   col: [80, 150, 255] },

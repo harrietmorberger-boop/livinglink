@@ -25,7 +25,21 @@ const CONFIG = {
   gestureHoldFrames: 5,          // ~0.15 seconds at 30 fps
   handLostFrames: 10,            // frames with no hand before we say "no hand"
 
+  // ---- Smoothing (the pen tip eases toward your real hand) ----
+  smoothSlow: 0.08,              // easing when hand is still. Smaller = steadier but floatier
+  smoothFast: 0.6,               // easing when hand moves fast. Bigger = less lag
+  smoothFastDistance: 40,        // how far behind (pixels) counts as "fast"
+  handMargin: 0.12,              // ignore the camera's outer 12% so you can reach the screen edges
+
+  // ---- Drawing ----
+  strokeWidth: 3,                // line thickness in pixels (Stage 4 makes this speed-based)
+  minPointDistance: 4,           // a new point is added every 4px of movement
+  maxPointsPerStroke: 1500,
+  maxStrokes: 30,                // oldest stroke is removed beyond this
+  eraseRadius: 45,               // how big the palm eraser is
+
   // ---- Testing helpers ----
+  showRawPoint: true,            // small orange dot = unsmoothed hand, to compare
   showPreview: true,             // small camera picture in the corner
   previewWidth: 200,
   showDebug: true,               // gesture label, fps, mode text

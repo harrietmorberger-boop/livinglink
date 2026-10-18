@@ -1,6 +1,6 @@
 // ============================================================
 // SKETCH - the main p5 file. setup() runs once, draw() runs every frame.
-// STAGE 2: adds pinch / palm / fist detection and on-screen labels.
+// STAGE 3: pinch draws smoothed strokes, palm erases, fist freezes.
 // ============================================================
 
 let mouseMode = CONFIG.mouseModeStartsOn;
@@ -16,37 +16,54 @@ function setup() {
 function draw() {
   background(...CONFIG.background);
 
-  // Where is the "pointer"? Fingertip normally, mouse in mouse mode.
-  const tip = mouseMode ? { x: mouseX, y: mouseY } : getIndexTip();
+  // Each frame, in order:
+  updateGesture();   // 1. what gesture is the hand making?
+  updatePointer();   // 2. where is the smoothed pen tip?
+  updateDrawing();   // 3. what does that gesture do to the strokes?
 
-  updateGesture();   // work out the stable gesture for this frame
-
-  // The dot on the fingertip. Its look changes with the gesture.
-  if (tip) drawPointer(tip);
+  drawStrokes();
+  if (pointer.visible) drawPointer();
+  if (gesture === "fist") drawFrozenBorder();
 
   drawPreview();
-  drawDebugText(tip);
+  drawDebugText();
 }
 
-// The fingertip dot. Shape tells you the gesture even without reading the label.
-function drawPointer(tip) {
+// Thin coloured frame so everyone can see the canvas is frozen
+function drawFrozenBorder() {
+  noFill();
+  stroke(...GESTURE_LABELS.fist.col, 150);
+  strokeWeight(6);
+  rect(3, 3, width - 6, height - 6);
+}
+
+// The pen tip. Its shape tells you the gesture even without reading the label.
+function drawPointer() {
   const c = GESTURE_LABELS[gesture].col;
+  const x = pointer.x, y = pointer.y;
+  push();
   noStroke();
   fill(...c, 50);
-  circle(tip.x, tip.y, 44);                 // soft glow
+  circle(x, y, 44);                         // soft glow
   if (gesture === "pinch") {                // solid dot = drawing
     fill(...c);
-    circle(tip.x, tip.y, 18);
-  } else if (gesture === "palm") {          // big ring = eraser
+    circle(x, y, 18);
+  } else if (gesture === "palm") {          // big ring = eraser (same size as the real eraser)
     noFill(); stroke(...c); strokeWeight(2);
-    circle(tip.x, tip.y, 70);
+    circle(x, y, CONFIG.eraseRadius * 2);
   } else if (gesture === "fist") {          // square = frozen
     noFill(); stroke(...c); strokeWeight(2);
-    rectMode(CENTER); square(tip.x, tip.y, 30);
+    rectMode(CENTER); square(x, y, 30);
   } else {                                  // small hollow dot = just hovering
     noFill(); stroke(...c); strokeWeight(2);
-    circle(tip.x, tip.y, 14);
+    circle(x, y, 14);
   }
+  // Orange dot = where the hand really is, before smoothing (for comparing)
+  if (CONFIG.showRawPoint) {
+    noStroke(); fill(255, 150, 60, 200);
+    circle(pointer.rawX, pointer.rawY, 6);
+  }
+  pop();
 }
 
 // Small mirrored camera picture in the bottom-right corner
@@ -77,7 +94,7 @@ function drawPreview() {
 }
 
 // Text in the top-left so we can see what the program thinks is happening
-function drawDebugText(tip) {
+function drawDebugText() {
   if (!CONFIG.showDebug) return;
   noStroke();
   fill(255, 170);
@@ -86,10 +103,11 @@ function drawDebugText(tip) {
   let status;
   if (mouseMode) status = "MOUSE MODE (press M for camera)";
   else if (!modelReady) status = "Loading hand model...";
-  else if (!tip) status = "No hand seen";
+  else if (!pointer.visible) status = "No hand seen";
   else status = "Hand tracked";
   text(status, 16, 16);
-  text("fps: " + nf(frameRate(), 2, 0), 16, 36);
+  text("fps: " + nf(frameRate(), 2, 0) + "   strokes: " + strokes.length +
+       "   speed: " + nf(pointer.speed, 1, 1), 16, 36);
   if (!mouseMode) {
     text("pinch gap: " + nf(gestureInfo.pinchRatio, 1, 2) +
          "  (start < " + CONFIG.pinchStart + ", release > " + CONFIG.pinchRelease + ")", 16, 56);
